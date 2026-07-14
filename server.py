@@ -55,8 +55,29 @@ class LoggingHandler(SimpleHTTPRequestHandler):
             writer.writerow([ts, ip, self.command, self.path, user_agent, referrer])
 
     def do_GET(self):
+        if self.path == "/logs":
+            self.log_visit()
+            self.serve_logs()
+            return
         self.log_visit()
         super().do_GET()
+
+    def serve_logs(self):
+        """Serve the raw access_log.csv file for viewing/downloading in browser."""
+        try:
+            with open(LOG_FILE, "rb") as f:
+                content = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/csv")
+            self.send_header("Content-Disposition", "inline; filename=access_log.csv")
+            self.send_header("Content-Length", str(len(content)))
+            self.end_headers()
+            self.wfile.write(content)
+        except FileNotFoundError:
+            self.send_response(404)
+            self.send_header("Content-Type", "text/plain")
+            self.end_headers()
+            self.wfile.write(b"No log file found yet.")
 
     def do_POST(self):
         self.log_visit()
